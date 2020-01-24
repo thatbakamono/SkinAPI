@@ -57,13 +57,8 @@ public class SkinAPI {
                 }
             };
 
-            final WrapperPlayServerPlayerInfo removePlayer = new WrapperPlayServerPlayerInfo();
-            removePlayer.setAction(EnumWrappers.PlayerInfoAction.REMOVE_PLAYER);
-            removePlayer.setData(playerInfoData);
-
-            final WrapperPlayServerPlayerInfo addPlayer = new WrapperPlayServerPlayerInfo();
-            addPlayer.setAction(EnumWrappers.PlayerInfoAction.ADD_PLAYER);
-            addPlayer.setData(playerInfoData);
+            final WrapperPlayServerPlayerInfo removePlayer = CreatePlayServerPlayerInfoPacket(EnumWrappers.PlayerInfoAction.REMOVE_PLAYER, playerInfoData);
+            final WrapperPlayServerPlayerInfo addPlayer = CreatePlayServerPlayerInfoPacket(EnumWrappers.PlayerInfoAction.ADD_PLAYER, playerInfoData);
 
             for (final Player observer : observers) {
                 try {
@@ -75,20 +70,8 @@ public class SkinAPI {
                             final Location location = observer.getLocation();
 
                             // Prepare packets
-                            final WrapperPlayServerRespawn respawn = new WrapperPlayServerRespawn();
-                            respawn.setDimension(-1); // change
-                            respawn.setDifficulty(EnumWrappers.Difficulty.valueOf(player.getWorld().getDifficulty().name()));
-                            respawn.setLevelType(player.getWorld().getWorldType());
-                            respawn.setGamemode(EnumWrappers.NativeGameMode.fromBukkit(player.getGameMode()));
-
-                            final WrapperPlayServerPosition position = new WrapperPlayServerPosition();
-                            position.setX(location.getX());
-                            position.setY(location.getY());
-                            position.setZ(location.getZ());
-                            position.setYaw(location.getYaw());
-                            position.setPitch(location.getPitch());
-                            position.setFlags(new HashSet<>());
-
+                            final WrapperPlayServerRespawn respawn = CreatePlayServerRespawnPacket(player);
+                            final WrapperPlayServerPosition position = CreatePlayServerPositionPacket(location);
                             final WrapperPlayServerHeldItemSlot heldItemSlot = new WrapperPlayServerHeldItemSlot();
                             heldItemSlot.setSlot(player.getInventory().getHeldItemSlot());
 
@@ -118,14 +101,7 @@ public class SkinAPI {
                         // Prepare packets
                         final WrapperPlayServerEntityDestroy entityDestroy = new WrapperPlayServerEntityDestroy();
                         entityDestroy.setEntityIds(new int[] { player.getEntityId() });
-
-                        final WrapperPlayServerNamedEntitySpawn namedEntitySpawn = new WrapperPlayServerNamedEntitySpawn();
-                        namedEntitySpawn.setEntityID(player.getEntityId());
-                        namedEntitySpawn.setPlayerUUID(player.getUniqueId());
-                        namedEntitySpawn.setMetadata(WrappedDataWatcher.getEntityWatcher(player));
-                        namedEntitySpawn.setPosition(location.toVector());
-                        namedEntitySpawn.setYaw(location.getYaw());
-                        namedEntitySpawn.setPitch(location.getPitch());
+                        final WrapperPlayServerNamedEntitySpawn namedEntitySpawn = CreatePlayServerNamedEntitySpawnPacket(player);
 
                         // Update skin for other players
                         removePlayer.sendPacket(observer);
@@ -140,5 +116,52 @@ public class SkinAPI {
 
             callback.done();
         });
+    }
+
+    private WrapperPlayServerPlayerInfo CreatePlayServerPlayerInfoPacket(final EnumWrappers.PlayerInfoAction playerInfoAction, final List<PlayerInfoData> playerInfoData) {
+        final WrapperPlayServerPlayerInfo playerInfo = new WrapperPlayServerPlayerInfo();
+
+        playerInfo.setAction(playerInfoAction);
+        playerInfo.setData(playerInfoData);
+
+        return playerInfo;
+    }
+
+    private WrapperPlayServerRespawn CreatePlayServerRespawnPacket(final Player player) {
+        final WrapperPlayServerRespawn respawn = new WrapperPlayServerRespawn();
+
+        respawn.setDimension(player.getWorld().getEnvironment().getId());
+        respawn.setDifficulty(EnumWrappers.Difficulty.valueOf(player.getWorld().getDifficulty().name()));
+        respawn.setLevelType(player.getWorld().getWorldType());
+        respawn.setGamemode(EnumWrappers.NativeGameMode.fromBukkit(player.getGameMode()));
+
+        return respawn;
+    }
+
+    private WrapperPlayServerPosition CreatePlayServerPositionPacket(final Location location) {
+        final WrapperPlayServerPosition position = new WrapperPlayServerPosition();
+
+        position.setX(location.getX());
+        position.setY(location.getY());
+        position.setZ(location.getZ());
+        position.setYaw(location.getYaw());
+        position.setPitch(location.getPitch());
+        position.setFlags(new HashSet<>());
+
+        return position;
+    }
+
+    private WrapperPlayServerNamedEntitySpawn CreatePlayServerNamedEntitySpawnPacket(final Player player) {
+        final Location location = player.getLocation();
+        final WrapperPlayServerNamedEntitySpawn namedEntitySpawn = new WrapperPlayServerNamedEntitySpawn();
+
+        namedEntitySpawn.setEntityID(player.getEntityId());
+        namedEntitySpawn.setPlayerUUID(player.getUniqueId());
+        namedEntitySpawn.setMetadata(WrappedDataWatcher.getEntityWatcher(player));
+        namedEntitySpawn.setPosition(location.toVector());
+        namedEntitySpawn.setYaw(location.getYaw());
+        namedEntitySpawn.setPitch(location.getPitch());
+
+        return namedEntitySpawn;
     }
 }
