@@ -44,99 +44,101 @@ public class SkinAPI {
     }
 
     public void setSkin(final Collection<? extends Player> observers, final Player player, final int id, SkinSetCallback callback) {
-        // Update skin texture
-        final WrappedGameProfile gameProfile = WrappedGameProfile.fromPlayer(player);
-        gameProfile.getProperties().clear();
-        gameProfile.getProperties().put("textures", new WrappedSignedProperty("textures", "", ""));
+        client.getSkin(id, skin -> {
+            // Update skin texture
+            final WrappedGameProfile gameProfile = WrappedGameProfile.fromPlayer(player);
+            gameProfile.getProperties().clear();
+            gameProfile.getProperties().put("textures", new WrappedSignedProperty("textures", skin.data.texture.value, skin.data.texture.signature));
 
-        // Prepare packets
-        final ArrayList<PlayerInfoData> playerInfoData = new ArrayList<PlayerInfoData>() {
-            {
-                new PlayerInfoData(gameProfile, 0, EnumWrappers.NativeGameMode.fromBukkit(player.getGameMode()), WrappedChatComponent.fromText(player.getDisplayName()));
-            }
-        };
+            // Prepare packets
+            final ArrayList<PlayerInfoData> playerInfoData = new ArrayList<PlayerInfoData>() {
+                {
+                    new PlayerInfoData(gameProfile, 0, EnumWrappers.NativeGameMode.fromBukkit(player.getGameMode()), WrappedChatComponent.fromText(player.getDisplayName()));
+                }
+            };
 
-        final WrapperPlayServerPlayerInfo removePlayer = new WrapperPlayServerPlayerInfo();
-        removePlayer.setAction(EnumWrappers.PlayerInfoAction.REMOVE_PLAYER);
-        removePlayer.setData(playerInfoData);
+            final WrapperPlayServerPlayerInfo removePlayer = new WrapperPlayServerPlayerInfo();
+            removePlayer.setAction(EnumWrappers.PlayerInfoAction.REMOVE_PLAYER);
+            removePlayer.setData(playerInfoData);
 
-        final WrapperPlayServerPlayerInfo addPlayer = new WrapperPlayServerPlayerInfo();
-        addPlayer.setAction(EnumWrappers.PlayerInfoAction.ADD_PLAYER);
-        addPlayer.setData(playerInfoData);
+            final WrapperPlayServerPlayerInfo addPlayer = new WrapperPlayServerPlayerInfo();
+            addPlayer.setAction(EnumWrappers.PlayerInfoAction.ADD_PLAYER);
+            addPlayer.setData(playerInfoData);
 
-        for (final Player observer : observers) {
-            try {
-                final Object observerHandle = Player.class.getMethod("getHandle").invoke(observer);
-                final Class<?> observerHandleClass = observerHandle.getClass();
+            for (final Player observer : observers) {
+                try {
+                    final Object observerHandle = Player.class.getMethod("getHandle").invoke(observer);
+                    final Class<?> observerHandleClass = observerHandle.getClass();
 
-                if (observer.equals(player)) {
-                    Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-                        final Location location = observer.getLocation();
+                    if (observer.equals(player)) {
+                        Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+                            final Location location = observer.getLocation();
+
+                            // Prepare packets
+                            final WrapperPlayServerRespawn respawn = new WrapperPlayServerRespawn();
+                            respawn.setDimension(-1); // change
+                            respawn.setDifficulty(EnumWrappers.Difficulty.valueOf(player.getWorld().getDifficulty().name()));
+                            respawn.setLevelType(player.getWorld().getWorldType());
+                            respawn.setGamemode(EnumWrappers.NativeGameMode.fromBukkit(player.getGameMode()));
+
+                            final WrapperPlayServerPosition position = new WrapperPlayServerPosition();
+                            position.setX(location.getX());
+                            position.setY(location.getY());
+                            position.setZ(location.getZ());
+                            position.setYaw(location.getYaw());
+                            position.setPitch(location.getPitch());
+                            position.setFlags(new HashSet<>());
+
+                            final WrapperPlayServerHeldItemSlot heldItemSlot = new WrapperPlayServerHeldItemSlot();
+                            heldItemSlot.setSlot(player.getInventory().getHeldItemSlot());
+
+                            // Update skin for myself
+                            try {
+                                removePlayer.sendPacket(observer);
+                                addPlayer.sendPacket(observer);
+                                respawn.sendPacket(observer);
+                                observerHandleClass.getMethod("updateAbilities").invoke(observerHandle);
+                                position.sendPacket(observer);
+                                heldItemSlot.sendPacket(observer);
+                                player.getClass().getMethod("updateScaledHealth").invoke(player);
+                                player.updateInventory();
+                                observerHandleClass.getMethod("triggerHealthUpdate").invoke(observerHandle);
+
+                                if (player.isOp()) {
+                                    player.setOp(false);
+                                    player.setOp(true);
+                                }
+                            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException exception) {
+                                exception.printStackTrace();
+                            }
+                        });
+                    } else {
+                        final Location location = player.getLocation();
 
                         // Prepare packets
-                        final WrapperPlayServerRespawn respawn = new WrapperPlayServerRespawn();
-                        respawn.setDimension(-1); // change
-                        respawn.setDifficulty(EnumWrappers.Difficulty.valueOf(player.getWorld().getDifficulty().name()));
-                        respawn.setLevelType(player.getWorld().getWorldType());
-                        respawn.setGamemode(EnumWrappers.NativeGameMode.fromBukkit(player.getGameMode()));
+                        final WrapperPlayServerEntityDestroy entityDestroy = new WrapperPlayServerEntityDestroy();
+                        entityDestroy.setEntityIds(new int[] { player.getEntityId() });
 
-                        final WrapperPlayServerPosition position = new WrapperPlayServerPosition();
-                        position.setX(location.getX());
-                        position.setY(location.getY());
-                        position.setZ(location.getZ());
-                        position.setYaw(location.getYaw());
-                        position.setPitch(location.getPitch());
-                        position.setFlags(new HashSet<>());
+                        final WrapperPlayServerNamedEntitySpawn namedEntitySpawn = new WrapperPlayServerNamedEntitySpawn();
+                        namedEntitySpawn.setEntityID(player.getEntityId());
+                        namedEntitySpawn.setPlayerUUID(player.getUniqueId());
+                        namedEntitySpawn.setMetadata(WrappedDataWatcher.getEntityWatcher(player));
+                        namedEntitySpawn.setPosition(location.toVector());
+                        namedEntitySpawn.setYaw(location.getYaw());
+                        namedEntitySpawn.setPitch(location.getPitch());
 
-                        final WrapperPlayServerHeldItemSlot heldItemSlot = new WrapperPlayServerHeldItemSlot();
-                        heldItemSlot.setSlot(player.getInventory().getHeldItemSlot());
-
-                        // Update skin for myself
-                        try {
-                            removePlayer.sendPacket(observer);
-                            addPlayer.sendPacket(observer);
-                            respawn.sendPacket(observer);
-                            observerHandleClass.getMethod("updateAbilities").invoke(observerHandle);
-                            position.sendPacket(observer);
-                            heldItemSlot.sendPacket(observer);
-                            player.getClass().getMethod("updateScaledHealth").invoke(player);
-                            player.updateInventory();
-                            observerHandleClass.getMethod("triggerHealthUpdate").invoke(observerHandle);
-
-                            if (player.isOp()) {
-                                player.setOp(false);
-                                player.setOp(true);
-                            }
-                        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException exception) {
-                            exception.printStackTrace();
-                        }
-                    });
-                } else {
-                    final Location location = player.getLocation();
-
-                    // Prepare packets
-                    final WrapperPlayServerEntityDestroy entityDestroy = new WrapperPlayServerEntityDestroy();
-                    entityDestroy.setEntityIds(new int[] { player.getEntityId() });
-
-                    final WrapperPlayServerNamedEntitySpawn namedEntitySpawn = new WrapperPlayServerNamedEntitySpawn();
-                    namedEntitySpawn.setEntityID(player.getEntityId());
-                    namedEntitySpawn.setPlayerUUID(player.getUniqueId());
-                    namedEntitySpawn.setMetadata(WrappedDataWatcher.getEntityWatcher(player));
-                    namedEntitySpawn.setPosition(location.toVector());
-                    namedEntitySpawn.setYaw(location.getYaw());
-                    namedEntitySpawn.setPitch(location.getPitch());
-
-                    // Update skin for other players
-                    removePlayer.sendPacket(observer);
-                    addPlayer.sendPacket(observer);
-                    entityDestroy.sendPacket(observer);
-                    namedEntitySpawn.sendPacket(observer);
+                        // Update skin for other players
+                        removePlayer.sendPacket(observer);
+                        addPlayer.sendPacket(observer);
+                        entityDestroy.sendPacket(observer);
+                        namedEntitySpawn.sendPacket(observer);
+                    }
+                } catch(NoSuchMethodException | IllegalAccessException | InvocationTargetException exception) {
+                    exception.printStackTrace();
                 }
-            } catch(NoSuchMethodException | IllegalAccessException | InvocationTargetException exception) {
-                exception.printStackTrace();
             }
-        }
 
-        callback.done();
+            callback.done();
+        });
     }
 }
