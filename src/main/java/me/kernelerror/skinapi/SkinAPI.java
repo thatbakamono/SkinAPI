@@ -42,8 +42,8 @@ public class SkinAPI {
     }
 
     public void uploadSkin(Player player, String url, SkinUploadCallback callback) throws MalformedURLException, IOException {
-        final URL skinUrl = new URL(url);
-        final File skinFile = new File(plugin.getDataFolder(), "skins/" + player.getUniqueId() + ".skin");
+        URL skinUrl = new URL(url);
+        File skinFile = new File(plugin.getDataFolder(), "skins/" + player.getUniqueId() + ".skin");
 
         FileUtils.copyURLToFile(skinUrl, skinFile);
         client.generateUpload(skinFile, skin -> {
@@ -52,14 +52,14 @@ public class SkinAPI {
         });
     }
 
-    public void setSkin(final Player player, final int id, final SkinSetCallback callback) {
+    public void setSkin(Player player, int id, SkinSetCallback callback) {
         setSkin(Bukkit.getOnlinePlayers(), player, id, callback);
     }
 
-    public void setSkin(final Collection<? extends Player> observers, final Player player, final int id, SkinSetCallback callback) {
+    public void setSkin(Collection<? extends Player> observers, Player player, int id, SkinSetCallback callback) {
         client.getSkin(id, skin -> {
             // Update skin texture
-            final WrappedGameProfile gameProfile = WrappedGameProfile.fromPlayer(player);
+            WrappedGameProfile gameProfile = WrappedGameProfile.fromPlayer(player);
             gameProfile.getProperties().clear();
             gameProfile.getProperties().put("textures", new WrappedSignedProperty("textures", skin.data.texture.value, skin.data.texture.signature));
 
@@ -70,10 +70,10 @@ public class SkinAPI {
                 }
             };
 
-            final WrapperPlayServerPlayerInfo removePlayer = createPlayServerPlayerInfoPacket(EnumWrappers.PlayerInfoAction.REMOVE_PLAYER, playerInfoData);
-            final WrapperPlayServerPlayerInfo addPlayer = createPlayServerPlayerInfoPacket(EnumWrappers.PlayerInfoAction.ADD_PLAYER, playerInfoData);
+            WrapperPlayServerPlayerInfo removePlayer = createPlayServerPlayerInfoPacket(EnumWrappers.PlayerInfoAction.REMOVE_PLAYER, playerInfoData);
+            WrapperPlayServerPlayerInfo addPlayer = createPlayServerPlayerInfoPacket(EnumWrappers.PlayerInfoAction.ADD_PLAYER, playerInfoData);
 
-            for (final Player observer : observers) {
+            for (Player observer : observers) {
                 try {
                     ReflectionCache observerCache;
 
@@ -90,12 +90,12 @@ public class SkinAPI {
 
                     if (observer.equals(player)) {
                         Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-                            final Location location = observer.getLocation();
+                            Location location = observer.getLocation();
 
                             // Prepare packets
-                            final WrapperPlayServerRespawn respawn = createPlayServerRespawnPacket(player);
-                            final WrapperPlayServerPosition position = createPlayServerPositionPacket(location);
-                            final WrapperPlayServerHeldItemSlot heldItemSlot = new WrapperPlayServerHeldItemSlot();
+                            WrapperPlayServerRespawn respawn = createPlayServerRespawnPacket(player);
+                            WrapperPlayServerPosition position = createPlayServerPositionPacket(location);
+                            WrapperPlayServerHeldItemSlot heldItemSlot = new WrapperPlayServerHeldItemSlot();
                             heldItemSlot.setSlot(player.getInventory().getHeldItemSlot());
 
                             // Update skin for myself
@@ -119,12 +119,12 @@ public class SkinAPI {
                             }
                         });
                     } else {
-                        final Location location = player.getLocation();
+                        Location location = player.getLocation();
 
                         // Prepare packets
-                        final WrapperPlayServerEntityDestroy entityDestroy = new WrapperPlayServerEntityDestroy();
+                        WrapperPlayServerEntityDestroy entityDestroy = new WrapperPlayServerEntityDestroy();
                         entityDestroy.setEntityIds(new int[] { player.getEntityId() });
-                        final WrapperPlayServerNamedEntitySpawn namedEntitySpawn = createPlayServerNamedEntitySpawnPacket(player);
+                        WrapperPlayServerNamedEntitySpawn namedEntitySpawn = createPlayServerNamedEntitySpawnPacket(player);
 
                         // Update skin for other players
                         removePlayer.sendPacket(observer);
@@ -141,8 +141,8 @@ public class SkinAPI {
         });
     }
 
-    private WrapperPlayServerPlayerInfo createPlayServerPlayerInfoPacket(final EnumWrappers.PlayerInfoAction playerInfoAction, final List<PlayerInfoData> playerInfoData) {
-        final WrapperPlayServerPlayerInfo playerInfo = new WrapperPlayServerPlayerInfo();
+    private WrapperPlayServerPlayerInfo createPlayServerPlayerInfoPacket(EnumWrappers.PlayerInfoAction playerInfoAction, List<PlayerInfoData> playerInfoData) {
+        WrapperPlayServerPlayerInfo playerInfo = new WrapperPlayServerPlayerInfo();
 
         playerInfo.setAction(playerInfoAction);
         playerInfo.setData(playerInfoData);
@@ -150,8 +150,8 @@ public class SkinAPI {
         return playerInfo;
     }
 
-    private WrapperPlayServerRespawn createPlayServerRespawnPacket(final Player player) {
-        final WrapperPlayServerRespawn respawn = new WrapperPlayServerRespawn();
+    private WrapperPlayServerRespawn createPlayServerRespawnPacket(Player player) {
+        WrapperPlayServerRespawn respawn = new WrapperPlayServerRespawn();
 
         respawn.setDimension(player.getWorld().getEnvironment().getId());
         respawn.setDifficulty(EnumWrappers.Difficulty.valueOf(player.getWorld().getDifficulty().name()));
@@ -161,8 +161,8 @@ public class SkinAPI {
         return respawn;
     }
 
-    private WrapperPlayServerPosition createPlayServerPositionPacket(final Location location) {
-        final WrapperPlayServerPosition position = new WrapperPlayServerPosition();
+    private WrapperPlayServerPosition createPlayServerPositionPacket(Location location) {
+        WrapperPlayServerPosition position = new WrapperPlayServerPosition();
 
         position.setX(location.getX());
         position.setY(location.getY());
@@ -174,9 +174,9 @@ public class SkinAPI {
         return position;
     }
 
-    private WrapperPlayServerNamedEntitySpawn createPlayServerNamedEntitySpawnPacket(final Player player) {
-        final Location location = player.getLocation();
-        final WrapperPlayServerNamedEntitySpawn namedEntitySpawn = new WrapperPlayServerNamedEntitySpawn();
+    private WrapperPlayServerNamedEntitySpawn createPlayServerNamedEntitySpawnPacket(Player player) {
+        Location location = player.getLocation();
+        WrapperPlayServerNamedEntitySpawn namedEntitySpawn = new WrapperPlayServerNamedEntitySpawn();
 
         namedEntitySpawn.setEntityID(player.getEntityId());
         namedEntitySpawn.setPlayerUUID(player.getUniqueId());
