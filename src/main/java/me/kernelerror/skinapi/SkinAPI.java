@@ -70,8 +70,8 @@ public class SkinAPI {
                 }
             };
 
-            final WrapperPlayServerPlayerInfo removePlayer = CreatePlayServerPlayerInfoPacket(EnumWrappers.PlayerInfoAction.REMOVE_PLAYER, playerInfoData);
-            final WrapperPlayServerPlayerInfo addPlayer = CreatePlayServerPlayerInfoPacket(EnumWrappers.PlayerInfoAction.ADD_PLAYER, playerInfoData);
+            final WrapperPlayServerPlayerInfo removePlayer = createPlayServerPlayerInfoPacket(EnumWrappers.PlayerInfoAction.REMOVE_PLAYER, playerInfoData);
+            final WrapperPlayServerPlayerInfo addPlayer = createPlayServerPlayerInfoPacket(EnumWrappers.PlayerInfoAction.ADD_PLAYER, playerInfoData);
 
             for (final Player observer : observers) {
                 try {
@@ -93,8 +93,8 @@ public class SkinAPI {
                             final Location location = observer.getLocation();
 
                             // Prepare packets
-                            final WrapperPlayServerRespawn respawn = CreatePlayServerRespawnPacket(player);
-                            final WrapperPlayServerPosition position = CreatePlayServerPositionPacket(location);
+                            final WrapperPlayServerRespawn respawn = createPlayServerRespawnPacket(player);
+                            final WrapperPlayServerPosition position = createPlayServerPositionPacket(location);
                             final WrapperPlayServerHeldItemSlot heldItemSlot = new WrapperPlayServerHeldItemSlot();
                             heldItemSlot.setSlot(player.getInventory().getHeldItemSlot());
 
@@ -124,7 +124,7 @@ public class SkinAPI {
                         // Prepare packets
                         final WrapperPlayServerEntityDestroy entityDestroy = new WrapperPlayServerEntityDestroy();
                         entityDestroy.setEntityIds(new int[] { player.getEntityId() });
-                        final WrapperPlayServerNamedEntitySpawn namedEntitySpawn = CreatePlayServerNamedEntitySpawnPacket(player);
+                        final WrapperPlayServerNamedEntitySpawn namedEntitySpawn = createPlayServerNamedEntitySpawnPacket(player);
 
                         // Update skin for other players
                         removePlayer.sendPacket(observer);
@@ -141,7 +141,7 @@ public class SkinAPI {
         });
     }
 
-    private WrapperPlayServerPlayerInfo CreatePlayServerPlayerInfoPacket(final EnumWrappers.PlayerInfoAction playerInfoAction, final List<PlayerInfoData> playerInfoData) {
+    private WrapperPlayServerPlayerInfo createPlayServerPlayerInfoPacket(final EnumWrappers.PlayerInfoAction playerInfoAction, final List<PlayerInfoData> playerInfoData) {
         final WrapperPlayServerPlayerInfo playerInfo = new WrapperPlayServerPlayerInfo();
 
         playerInfo.setAction(playerInfoAction);
@@ -150,7 +150,7 @@ public class SkinAPI {
         return playerInfo;
     }
 
-    private WrapperPlayServerRespawn CreatePlayServerRespawnPacket(final Player player) {
+    private WrapperPlayServerRespawn createPlayServerRespawnPacket(final Player player) {
         final WrapperPlayServerRespawn respawn = new WrapperPlayServerRespawn();
 
         respawn.setDimension(player.getWorld().getEnvironment().getId());
@@ -161,7 +161,7 @@ public class SkinAPI {
         return respawn;
     }
 
-    private WrapperPlayServerPosition CreatePlayServerPositionPacket(final Location location) {
+    private WrapperPlayServerPosition createPlayServerPositionPacket(final Location location) {
         final WrapperPlayServerPosition position = new WrapperPlayServerPosition();
 
         position.setX(location.getX());
@@ -174,7 +174,7 @@ public class SkinAPI {
         return position;
     }
 
-    private WrapperPlayServerNamedEntitySpawn CreatePlayServerNamedEntitySpawnPacket(final Player player) {
+    private WrapperPlayServerNamedEntitySpawn createPlayServerNamedEntitySpawnPacket(final Player player) {
         final Location location = player.getLocation();
         final WrapperPlayServerNamedEntitySpawn namedEntitySpawn = new WrapperPlayServerNamedEntitySpawn();
 
