@@ -14,6 +14,7 @@ import org.mineskin.MineskinClient;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
@@ -23,9 +24,21 @@ public class SkinAPI {
     private final JavaPlugin plugin;
     private final ProtocolManager protocolManager;
 
+    private HashMap<UUID, ReflectionCache> cache = new HashMap<>();
+
+    private Method getHandleMethod;
+    private Method updateScaledHealthMethod;
+
     public SkinAPI(JavaPlugin plugin) {
         this.plugin = plugin;
         protocolManager = ProtocolLibrary.getProtocolManager();
+
+        try {
+            getHandleMethod = Player.class.getMethod("getHandle");
+            updateScaledHealthMethod = Player.class.getMethod("updateScaledHealth");
+        } catch (NoSuchMethodException exception) {
+            throw new RuntimeException("This should not happen, maybe you are using an unsupported version?");
+        }
     }
 
     public void uploadSkin(Player player, String url, SkinUploadCallback callback) throws MalformedURLException, IOException {
@@ -62,8 +75,18 @@ public class SkinAPI {
 
             for (final Player observer : observers) {
                 try {
-                    final Object observerHandle = Player.class.getMethod("getHandle").invoke(observer);
-                    final Class<?> observerHandleClass = observerHandle.getClass();
+                    ReflectionCache observerCache;
+
+                    if (!cache.containsKey(observer.getUniqueId())) {
+                        observerCache = new ReflectionCache();
+                        observerCache.setHandle(getHandleMethod.invoke(observer));
+                        observerCache.setHandleClass(observerCache.getHandle().getClass());
+                        observerCache.setUpdateAbilitiesMethod(observerCache.getHandleClass().getMethod("updateAbilities"));
+
+                        cache.put(observer.getUniqueId(), observerCache);
+                    } else {
+                        observerCache = cache.get(observer.getUniqueId());
+                    }
 
                     if (observer.equals(player)) {
                         Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
@@ -80,19 +103,19 @@ public class SkinAPI {
                                 removePlayer.sendPacket(observer);
                                 addPlayer.sendPacket(observer);
                                 respawn.sendPacket(observer);
-                                observerHandleClass.getMethod("updateAbilities").invoke(observerHandle);
+                                observerCache.getUpdateAbilitiesMethod().invoke(observerCache.getHandle());
                                 position.sendPacket(observer);
                                 heldItemSlot.sendPacket(observer);
-                                player.getClass().getMethod("updateScaledHealth").invoke(player);
+                                updateScaledHealthMethod.invoke(player);
                                 player.updateInventory();
-                                observerHandleClass.getMethod("triggerHealthUpdate").invoke(observerHandle);
+                                observerCache.getTriggerHealthUpdateMethod().invoke(observerCache.getHandle());
 
                                 if (player.isOp()) {
                                     player.setOp(false);
                                     player.setOp(true);
                                 }
-                            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException exception) {
-                                exception.printStackTrace();
+                            } catch (IllegalAccessException | InvocationTargetException exception) {
+                                throw new RuntimeException("This should not happen, maybe you are using an unsupported version?");
                             }
                         });
                     } else {
@@ -110,7 +133,7 @@ public class SkinAPI {
                         namedEntitySpawn.sendPacket(observer);
                     }
                 } catch(NoSuchMethodException | IllegalAccessException | InvocationTargetException exception) {
-                    exception.printStackTrace();
+                    throw new RuntimeException("This should not happen, maybe you are using an unsupported version?");
                 }
             }
 
