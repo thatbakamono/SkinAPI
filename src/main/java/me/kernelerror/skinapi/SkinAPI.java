@@ -52,6 +52,16 @@ public class SkinAPI {
         });
     }
 
+    public void getSkin(Player player, SkinUploadCallback callback) {
+        getSkin(player.getUniqueId(), callback);
+    }
+
+    public void getSkin(UUID uniqueId, SkinUploadCallback callback) {
+        client.generateUser(uniqueId, skin -> {
+            callback.done(skin.id);
+        });
+    }
+
     public void setSkin(Player player, int id, SkinSetCallback callback) {
         setSkin(Bukkit.getOnlinePlayers(), player, id, callback);
     }
